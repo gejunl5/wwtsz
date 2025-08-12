@@ -1,28 +1,142 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>窝窝头是猪</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f0f0;
-        }
-        .content {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            font-size: 5rem;
-            color: #333;
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>窝窝头是猪</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; overflow: hidden;
+    height: 100vh;
+    background: #111;
+    user-select: none;
+  }
+  #text {
+    position: absolute;
+    font-size: 48px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow:
+      0 0 5px #ff0,
+      0 0 10px #ff0,
+      0 0 20px #ff0,
+      0 0 30px #ff0,
+      0 0 40px #ff0;
+    pointer-events: none;
+    will-change: transform;
+  }
+  /* 拖影用canvas */
+  #trailCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+  }
+</style>
 </head>
 <body>
-    <div class="content">你是猪</div>
+<canvas id="trailCanvas"></canvas>
+<div id="text">窝窝头是猪</div>
+
+<script>
+  const text = document.getElementById('text');
+  const canvas = document.getElementById('trailCanvas');
+  const ctx = canvas.getContext('2d');
+
+  let vw = window.innerWidth;
+  let vh = window.innerHeight;
+  canvas.width = vw;
+  canvas.height = vh;
+
+  // 文字大小，方便计算边界
+  const rect = text.getBoundingClientRect();
+  const textWidth = rect.width || 200;
+  const textHeight = rect.height || 60;
+
+  // 位置和速度
+  let x = Math.random() * (vw - textWidth);
+  let y = Math.random() * (vh - textHeight);
+  let vx = 4 + Math.random() * 3;  // 横向速度
+  let vy = 3 + Math.random() * 3;  // 纵向速度
+
+  // 旋转角度和速度
+  let angle = 0;
+  let angularVelocity = 0.05 + Math.random() * 0.05;
+
+  // 闪光周期
+  let flashTime = 0;
+
+  // 轨迹数组，保存之前的位置用于拖影
+  const trail = [];
+
+  function loop() {
+    // 更新位置
+    x += vx;
+    y += vy;
+
+    // 碰到边界反弹
+    if (x < 0) {
+      x = 0;
+      vx = -vx;
+    } else if (x + textWidth > vw) {
+      x = vw - textWidth;
+      vx = -vx;
+    }
+    if (y < 0) {
+      y = 0;
+      vy = -vy;
+    } else if (y + textHeight > vh) {
+      y = vh - textHeight;
+      vy = -vy;
+    }
+
+    // 更新旋转
+    angle += angularVelocity;
+    if (angle > Math.PI * 2) angle -= Math.PI * 2;
+
+    // 更新闪光时间
+    flashTime += 0.1;
+    const flashAlpha = 0.5 + 0.5 * Math.sin(flashTime * 10);
+
+    // 添加当前位置到轨迹
+    trail.push({x, y, angle, alpha: flashAlpha});
+    if (trail.length > 20) trail.shift();
+
+    // 画拖影
+    ctx.clearRect(0, 0, vw, vh);
+    for (let i = 0; i < trail.length; i++) {
+      const t = trail[i];
+      ctx.save();
+      ctx.translate(t.x + textWidth / 2, t.y + textHeight / 2);
+      ctx.rotate(t.angle);
+      ctx.globalAlpha = t.alpha * (i / trail.length) * 0.5;
+      ctx.fillStyle = 'yellow';
+      ctx.font = 'bold 48px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('窝窝头是猪', 0, 0);
+      ctx.restore();
+    }
+
+    // 设置主文字位置和旋转，闪光用滤镜调整透明度
+    text.style.left = x + 'px';
+    text.style.top = y + 'px';
+    text.style.transform = `rotate(${angle}rad)`;
+    text.style.opacity = flashAlpha;
+
+    requestAnimationFrame(loop);
+  }
+
+  // 窗口大小改变，重设画布和限制
+  window.addEventListener('resize', () => {
+    vw = window.innerWidth;
+    vh = window.innerHeight;
+    canvas.width = vw;
+    canvas.height = vh;
+  });
+
+  loop();
+</script>
 </body>
 </html>
